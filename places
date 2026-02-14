@@ -1,6 +1,0 @@
-;;; -*- coding: utf-8; mode: lisp-data -*-
-(("e:/Development/.emacs.d/early-init.el" . 620)
- ("e:/Development/.emacs.d/"
-  (dired-filename . "e:/Development/.emacs.d/init.el"))
- ("e:/Development/.emacs.d/lisp/init-edit.el" . 884)
- ("e:/Development/.emacs.d/lisp/init-ui.el" . 1409))
