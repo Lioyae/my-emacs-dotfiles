@@ -1,0 +1,24 @@
+# === Emacs 临时文件与文件夹 ===
+*~
+\#*\#
+*.elc
+auto-save-list/
+etc/
+.cache/
+.server/
+nerd-icons-fonts/
+tutorial/
+var/
+places/
+recentf/
+.dir-locals.el
+early-init.el~
+init.el~
+tmp/
+
+# === 常见的插件缓存 ===
+.projectile
+.ido.last
+.elpy-rpc/
+straight/
+elpa/

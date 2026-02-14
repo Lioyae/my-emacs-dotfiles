@@ -1,32 +1,47 @@
-;;; init.el --- 基础与进阶配置 -*- lexical-binding: t -*-
+;;; init.el --- 完整集成配置 -*- lexical-binding: t -*-
 
 ;; ==========================================
-;; 1. 编码与基础环境 (修复之前的错误)
+;; 1. 基础编码与环境 (修复 void-function 错误)
 ;; ==========================================
 (set-language-environment "UTF-8")
 (prefer-coding-system 'utf-8)
 (set-default-coding-systems 'utf-8)
 (set-terminal-coding-system 'utf-8)
 (set-keyboard-coding-system 'utf-8)
+(setq-default buffer-file-coding-system 'utf-8)
 
 ;; ==========================================
-;; 2. 字体设置 (JetBrains Mono Nerd Font)
+;; 2. 插件管理器初始化 (MELPA)
 ;; ==========================================
-;; 注意：如果仍不生效，请尝试将 "JetBrainsMono Nerd Font" 简写为 "JetBrains Mono"
+(require 'package)
+(setq package-archives '(("melpa" . "https://melpa.org/packages/")
+                         ("gnu"   . "https://elpa.gnu.org/packages/")
+                         ("nongnu". "https://elpa.nongnu.org/nongnu/")))
+(package-initialize)
+(unless package-archive-contents (package-refresh-contents))
+
+;; 确保安装必要的插件
+(dolist (pkg '(doom-themes doom-modeline no-littering))
+  (unless (package-installed-p pkg)
+    (package-install pkg)))
+
+;; ==========================================
+;; 3. 字体设置 (JetBrains Mono Nerd Font)
+;; ==========================================
 (defun my/setup-fonts ()
   (condition-case nil
       (set-face-attribute 'default nil 
                           :family "JetBrains Mono" 
                           :height 125 
-                          :weight 'Medium)
-    (error (message "字体加载失败，请确认系统已安装 JetBrains Mono"))))
+                          :weight 'normal)
+    (error (message "字体加载失败，请确认为所有用户安装了 JetBrains Mono"))))
 
 (if (daemonp)
     (add-hook 'server-after-make-frame-hook #'my/setup-fonts)
   (my/setup-fonts))
 
 ;; ==========================================
-;; 3. 界面展示 (行号、缩进、平滑)
+;; 4. 界面与编辑器基础设置
 ;; ==========================================
 ;; 相对行号
 (setq display-line-numbers-type 'relative)
@@ -35,80 +50,49 @@
 ;; Tab 缩进 = 2 空格
 (setq-default indent-tabs-mode nil)
 (setq-default tab-width 2)
-(setq-default c-basic-offset 2) ; 针对 C/C++ 等
+(setq-default c-basic-offset 2) ; 针对 STM32 的 C 代码
 
-;; 基础视觉优化
-(setq inhibit-startup-screen t)   ; 禁用启动页
-(global-hl-line-mode 1)          ; 高亮当前行
-(delete-selection-mode 1)        ; 选中即可输入覆盖
-
-;; ==========================================
-;; 4. 自动补全与编辑增强
-;; ==========================================
-;; 自动括号补全
+;; 自动补全括号
 (electric-pair-mode 1)
 
-;; 搜索增强：移动到匹配项时居中
-(setq scroll-step 1
-      scroll-conservatively 10000)
-
-;; 自动刷新被外部修改的文件 (对 ROS/单片机生成代码很有用)
-(global-auto-revert-mode t)
+;; 基础视觉
+(setq inhibit-startup-screen t)
+(global-hl-line-mode 1)
+(delete-selection-mode 1)
 
 ;; ==========================================
-;; 5. 其他进阶推荐 (针对 Windows 体验)
+;; 5. 主题美化与状态栏
 ;; ==========================================
+(require 'doom-themes)
+(load-theme 'doom-one t) ; 推荐 doom-one 或 doom-nord
+(doom-themes-visual-bell-config)
 
-;; A. 快速打开配置文件 (按 F5 键)
-(defun open-init-file () (interactive) (find-file (expand-file-name "init.el" user-emacs-directory)))
-(global-set-key (kbd "<f5>") 'open-init-file)
+(require 'doom-modeline)
+(doom-modeline-mode 1)
+;; 注意：首次使用请执行 M-x nerd-icons-install-fonts
 
-;; B. 备份文件管理 (不在当前目录生成 *~ 文件)
-(setq backup-directory-alist `(("." . ,(expand-file-name "backups" user-emacs-directory))))
+;; ==========================================
+;; 6. 文件夹乱搞治理 (No-Littering)
+;; ==========================================
+(require 'no-littering)
+;; 将自动生成的备份文件统一管理，不散落在项目目录
+(setq backup-directory-alist
+      `((".*" . ,(no-littering-expand-var-file-name "backup/"))))
+(setq auto-save-file-name-transforms
+      `((".*" ,(no-littering-expand-var-file-name "auto-save/") t)))
+(setq create-lockfiles nil) ; 禁用 .# 文件
 
-;; C. 恢复 GC 阈值 (配合 early-init.el)
+;; ==========================================
+;; 7. 启动后性能恢复
+;; ==========================================
 (add-hook 'emacs-startup-hook
           (lambda ()
-            (setq gc-cons-threshold (* 16 1024 1024)
+            (setq gc-cons-threshold (* 16 1024 1024) ; 恢复到 16MB
                   gc-cons-percentage 0.1)
             (setq file-name-handler-alist default-file-name-handler-alist)))
 
-;; ==========================================
-;; 6. 插件包管理器初始化
-;; ==========================================
-(require 'package)
-(setq package-archives '(("melpa" . "https://melpa.org/packages/")
-                         ("gnu"   . "https://elpa.gnu.org/packages/")
-                         ("nongnu". "https://elpa.nongnu.org/nongnu/")))
-(package-initialize)
-
-;; 如果是第一次使用，自动刷新软件源
-(unless package-archive-contents
-  (package-refresh-contents))
-
-;; ==========================================
-;; 7. 安装并加载好看的主题
-;; ==========================================
-(unless (package-installed-p 'doom-themes)
-  (package-install 'doom-themes))
-
-(require 'doom-themes)
-
-;; 设置默认主题 (这里推荐 doom-one)
-(load-theme 'doom-nord t)
-
-;; 进阶功能：使外部终端、模式行等更美观
-(doom-themes-visual-bell-config)
-(doom-themes-neotree-config) ; 如果你用 neotree
-(doom-themes-org-config)     ; 如果你用 org-mode
-
-;; ==========================================
-;; 8. 模式行美化 (推荐配合使用)
-;; ==========================================
-(unless (package-installed-p 'doom-modeline)
-  (package-install 'doom-modeline))
-(require 'doom-modeline)
-(doom-modeline-mode 1)
+;; 快速打开配置文件快捷键 (F5)
+(global-set-key (kbd "<f5>") (lambda () (interactive) (find-file user-init-file)))
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
