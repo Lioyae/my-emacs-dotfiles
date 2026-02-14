@@ -1,0 +1,72 @@
+;;
+;;
+;;; early-init.el --- Early Initialization -*- lexical-binding: t -*-
+
+;; -----------------------------------------------------------------------------
+;; 1. 垃圾回收 (GC) 优化
+;; -----------------------------------------------------------------------------
+;; Emacs 默认的 GC 阈值非常低 (800kb)，导致启动时频繁暂停进行垃圾回收。
+;; 我们在启动阶段将其调到最大，让 Emacs 一口气读完配置。
+;; 注意：你必须在 init.el 的末尾将这个值改回来（通常建议 16MB - 100MB）。
+(setq gc-cons-threshold most-positive-fixnum)
+
+;; -----------------------------------------------------------------------------
+;; 2. 文件加载优化 (Windows 下效果明显)
+;; -----------------------------------------------------------------------------
+;; 暂时禁用 file-name-handler-alist。
+;; 这一步可以显著减少启动时处理大量小文件（如加载 package）时的正则匹配开销。
+(defvar default-file-name-handler-alist file-name-handler-alist)
+(setq file-name-handler-alist nil)
+
+;; 配合 init.el 使用的一个 hook：
+;; 当 Emacs 启动完成后，恢复 GC 阈值和文件处理器。
+(add-hook 'emacs-startup-hook
+          (lambda ()
+            (setq gc-cons-threshold (* 16 1024 1024)) ; 恢复为 16MB
+            (setq file-name-handler-alist default-file-name-handler-alist)))
+
+;; -----------------------------------------------------------------------------
+;; 3. 包管理器优化
+;; -----------------------------------------------------------------------------
+;; 禁止 package.el 在启动时自动激活包。
+;; 现代配置通常使用 use-package 或 straight.el 来显式管理加载，
+;; 自动激活会拖慢速度且导致加载顺序不可控。
+(setq package-enable-at-startup nil)
+
+;; -----------------------------------------------------------------------------
+;; 4. UI 预设 (防止界面闪烁/跳动)
+;; -----------------------------------------------------------------------------
+;; 在 create-frame 之前就告诉 Emacs 不要这些 UI 组件。
+;; 如果写在 init.el 里，你会看到窗口先有工具栏，然后工具栏消失，窗口内容跳动一下。
+(push '(menu-bar-lines . 0) default-frame-alist)
+(push '(tool-bar-lines . 0) default-frame-alist)
+(push '(vertical-scroll-bars . nil) default-frame-alist)
+
+;; (可选) 如果你总是全屏启动，可以加上这行：
+;; (push '(fullscreen . maximized) default-frame-alist)
+
+;; (可选) 可以在这里预设背景色，防止暗色主题加载前的“白屏闪瞎眼”
+;; 注意：颜色代码应与你计划加载的主题一致 (这里是 Doom One 的背景色)
+;; (push '(background-color . "#282c34") default-frame-alist)
+;; (push '(foreground-color . "#bbc2cf") default-frame-alist)
+
+;; -----------------------------------------------------------------------------
+;; 5. 杂项与 Emacs 30 特性
+;; -----------------------------------------------------------------------------
+
+;; 禁止启动画面（提高心理上的启动速度感）
+(setq inhibit-startup-screen t
+      inhibit-startup-message t
+      inhibit-startup-echo-area-message user-login-name)
+
+;; Native Compilation (原生编译) 设置
+;; 在 Windows 上，异步编译时可能会弹出一堆 Warnings Buffer，非常干扰视线。
+;; 这里设置让它静默编译，只在出错时提示。
+(setq native-comp-async-report-warnings-errors 'silent)
+
+;; 优化双向文字显示 (Bidi)
+;; 除非你编辑阿拉伯语或希伯来语，否则强制从左到右渲染能提升长行文本的性能。
+(setq-default bidi-display-reordering 'left-to-right
+              bidi-paragraph-direction 'left-to-right)
+
+(provide 'early-init)
